@@ -1,0 +1,31 @@
+00000513  // li a0, vetor (substitua pelo endereço real)
+00000593  // li a1, 0
+00300613  // li a2, 3
+00400313  // li t1, 4
+fff00393  // li t2, -1
+00000413  // li t3, 0
+02c45663  // bge t3, a2, fim_loop
+00241313  // slli t4, t3, 2
+006502b3  // add t5, a0, t4
+0002ae03  // lw t6, 0(t5)
+00635863  // ble t6, t1, faz_swap
+0100006f  // j prox_j
+00138393  // addi t2, t2, 1
+00239313  // slli t4, t2, 2
+006502b3  // add t5, a0, t4
+0002ae03  // lw t6, 0(t5)
+01c2a023  // sw t6, 0(t5)
+01c2a023  // sw t6, 0(t5) (duplicado?)
+00140413  // addi t3, t3, 1
+fe1ff06f  // j loop_j
+00138393  // addi t2, t2, 1
+00239313  // slli t4, t2, 2
+006502b3  // add t5, a0, t4
+0002ae03  // lw t6, 0(t5)
+00261313  // slli t4, a2, 2
+006502b3  // add t5, a0, t4
+0002ae03  // lw t6, 0(t5)
+01c2a023  // sw t6, 0(t5)
+01c2a023  // sw t6, 0(t5)
+00a00893  // li a7, 10
+00000073  // ecall
