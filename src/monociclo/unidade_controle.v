@@ -21,15 +21,32 @@ module unidade_controle(
         ALUSrc   = 1'b0; MemtoReg = 1'b0; RegWrite = 1'b0; MemRead = 1'b0;
         MemWrite = 1'b0; Branch   = 1'b0; Jump     = 1'b0; ALUControl = 4'bxxxx;
 
-        case(opcode)
-            // R-type (ADD, SUB, AND, etc.)
+ case(opcode)
+            // R-type (ADD, SUB, AND, OR, etc.)
             7'b0110011: begin
                 RegWrite = 1'b1; // Escreve o resultado no registrador
                 ALUSrc   = 1'b0; // A segunda fonte da ULA é um registrador (RD2)
+                
+                // CORREÇÃO: Bloco completo para todas as instruções Tipo-R do RV32I
                 case(funct3)
-                    3'b000: ALUControl = (funct7[5]) ? 4'b0110 : 4'b0010; // SUB ou ADD
-                    // Adicione outros R-types aqui...
-                    default: ALUControl = 4'bxxxx;
+                    3'b000: // ADD ou SUB
+                        ALUControl = (funct7[5]) ? 4'b0110 : 4'b0010; // funct7[5]=1 -> SUB, senão ADD
+                    3'b001: // SLL (Shift Left Logical)
+                        ALUControl = 4'b0011; // Usando o código que definimos na ULA
+                    3'b010: // SLT (Set on Less Than, Signed)
+                        ALUControl = 4'b0111;
+                    3'b011: // SLTU (Set on Less Than, Unsigned)
+                        ALUControl = 4'b1000;
+                    3'b100: // XOR
+                        ALUControl = 4'b0100;
+                    3'b101: // SRL ou SRA (Shift Right Logical/Arithmetic)
+                        ALUControl = (funct7[5]) ? 4'bxxxx : 4'b0101; // SRA ainda não implementado na ULA
+                    3'b110: // OR
+                        ALUControl = 4'b0001;
+                    3'b111: // AND
+                        ALUControl = 4'b0000;
+                    default: 
+                        ALUControl = 4'bxxxx;
                 endcase
             end
 
