@@ -30,7 +30,7 @@ module tb_riscv();
         $finish;
     end
     
-    // Função para decodificar a instrução (mantida como antes)
+    // Função para decodificar a instrução
     function string decode_instruction;
         input [31:0] instr;
         reg [4:0] rd, rs1, rs2;
@@ -42,21 +42,56 @@ module tb_riscv();
         begin
             opcode = instr[6:0]; rd = instr[11:7]; rs1 = instr[19:15]; rs2 = instr[24:20];
             funct3 = instr[14:12]; funct7 = instr[31:25];
+
             case(opcode)
-                7'b0110011: case(funct3) 3'b000: if(funct7==7'b0100000) decode_instruction = $sformatf("sub  x%0d, x%0d, x%0d", rd, rs1, rs2); else decode_instruction = $sformatf("add  x%0d, x%0d, x%0d", rd, rs1, rs2); default: decode_instruction = "R-type unknown"; endcase
-                7'b0010011: begin imm = {{20{instr[31]}}, instr[31:20]}; case(funct3) 3'b000: decode_instruction = $sformatf("addi x%0d, x%0d, %d", rd, rs1, $signed(imm)); default: decode_instruction = "I-type unknown"; endcase end
-                7'b0000011: begin imm = {{20{instr[31]}}, instr[31:20]}; decode_instruction = $sformatf("lw   x%0d, %d(x%0d)", rd, $signed(imm), rs1); end
-                7'b0100011: begin imm = {{20{instr[31]}}, instr[31:25], instr[11:7]}; decode_instruction = $sformatf("sw   x%0d, %d(x%0d)", rs2, $signed(imm), rs1); end
-                7'b1100011: begin imm = {{19{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0}; decode_instruction = $sformatf("beq  x%0d, x%0d, %d", rs1, rs2, $signed(imm)); end
-                7'b1101111: begin imm = {{11{instr[31]}}, instr[31], instr[19:12], instr[20], instr[30:21], 1'b0}; decode_instruction = $sformatf("jal  x%0d, %d", rd, $signed(imm)); end
+                7'b0110011: // R-type
+                    case(funct3)
+                        3'b000: if(funct7==7'b0100000) decode_instruction = $sformatf("sub  x%0d, x%0d, x%0d", rd, rs1, rs2); else decode_instruction = $sformatf("add  x%0d, x%0d, x%0d", rd, rs1, rs2);
+                        default: decode_instruction = "R-type Desconhecido";
+                    endcase
+                7'b0010011: // I-type
+                    begin
+                        imm = {{20{instr[31]}}, instr[31:20]};
+                        case(funct3)
+                            3'b000: decode_instruction = $sformatf("addi x%0d, x%0d, %d", rd, rs1, $signed(imm));
+                            default: decode_instruction = "I-type Desconhecido";
+                        endcase
+                    end
+                7'b0000011: // LW
+                    begin
+                        imm = {{20{instr[31]}}, instr[31:20]};
+                        decode_instruction = $sformatf("lw   x%0d, %d(x%0d)", rd, $signed(imm), rs1);
+                    end
+                7'b0100011: // SW
+                    begin
+                        imm = {{20{instr[31]}}, instr[31:25], instr[11:7]};
+                        decode_instruction = $sformatf("sw   x%0d, %d(x%0d)", rs2, $signed(imm), rs1);
+                    end
+                7'b1100011: // B-type (Branch)
+                    begin
+                        imm = {{19{instr[31]}}, instr[31], instr[7], instr[30:25], instr[11:8], 1'b0};
+                        // CORREÇÃO 1: Decodifica o nome correto para cada branch
+                        case(funct3)
+                            3'b000: decode_instruction = $sformatf("beq  x%0d, x%0d, %d", rs1, rs2, $signed(imm));
+                            3'b001: decode_instruction = $sformatf("bne  x%0d, x%0d, %d", rs1, rs2, $signed(imm));
+                            3'b100: decode_instruction = $sformatf("blt  x%0d, x%0d, %d", rs1, rs2, $signed(imm));
+                            3'b101: decode_instruction = $sformatf("bge  x%0d, x%0d, %d", rs1, rs2, $signed(imm));
+                            3'b110: decode_instruction = $sformatf("bltu x%0d, x%0d, %d", rs1, rs2, $signed(imm));
+                            3'b111: decode_instruction = $sformatf("bgeu x%0d, x%0d, %d", rs1, rs2, $signed(imm));
+                            default: decode_instruction = "Branch Desconhecido";
+                        endcase
+                    end
+                7'b1101111: // JAL
+                    begin
+                        imm = {{11{instr[31]}}, instr[31], instr[19:12], instr[20], instr[30:21], 1'b0};
+                        decode_instruction = $sformatf("jal  x%0d, %d", rd, $signed(imm));
+                    end
                 default: decode_instruction = "--- NOP / UNKNOWN ---";
             endcase
         end
     endfunction
 
-    //--------------------------------------------------------------------
-    // CORREÇÃO FINAL: LOG DIDÁTICO 100% SINCRONIZADO
-    //--------------------------------------------------------------------
+    // LOG DIDÁTICO 100% SINCRONIZADO
     integer cycle_count = 0;
     initial begin
       $display("====================================================================================================");
@@ -65,29 +100,33 @@ module tb_riscv();
     end
     
     // Registradores para guardar um "snapshot" completo do ciclo anterior
-    reg [31:0] prev_pc, prev_instr, prev_result, prev_alu_result, prev_rd2;
+    reg [31:0] prev_pc, prev_instr, prev_result, prev_alu_result, prev_rd2, prev_pc_next;
     reg        prev_reg_write, prev_mem_write, prev_branch, prev_zero, prev_jump;
-    reg [31:0] prev_pc_next;
+    reg [2:0]  prev_funct3; // Precisamos salvar o funct3 para a lógica do display
 
     always @(posedge clk) begin
         if (reset) begin
             cycle_count <= 0;
         end else begin
-            // Na borda de subida, o ciclo anterior (em prev_pc) acabou. Vamos reportar sobre ele.
-            #1ps; // Espera mínima para garantir que os valores foram atualizados.
+            #1ps; 
             
             $write("|| %5d | %t | %h | %-28s | ", cycle_count, $time, prev_pc, decode_instruction(prev_instr));
             
-            // Agora, a lógica de display usa APENAS os valores salvos do ciclo anterior
+            // CORREÇÃO 2: Lógica de display robusta que reporta todos os desvios
             if (prev_reg_write && prev_instr[11:7] != 0) begin
                 if (prev_jump)
-                    $display("x%0d <= %h (endereço de retorno)", prev_instr[11:7], prev_result);
+                    $display("x%0d <= %h (retorno)", prev_instr[11:7], prev_result);
                 else
                     $display("x%0d <= %d", prev_instr[11:7], prev_result);
             end else if (prev_mem_write)
                 $display("MEM[%h] <= %d", prev_alu_result, prev_rd2);
-            else if (prev_branch & prev_zero)
-                $display("Branch (BEQ) TOMADO para PC = %h", prev_pc_next);
+            else if (prev_branch) begin
+                if (prev_pc_next != prev_pc + 4)
+                    $display("Branch TOMADO para PC = %h", prev_pc_next);
+                else
+                    $display("Branch NÃO TOMADO.");
+            end else if (prev_jump)
+                 $display("Jump (JAL) TOMADO para PC = %h", prev_pc_next);
             else
                 $display("Nenhuma escrita ou desvio.");
 
@@ -95,7 +134,6 @@ module tb_riscv();
         end
 
         // No final de cada ciclo, tiramos um "snapshot" de todos os sinais importantes.
-        // Estes valores serão usados na PRÓXIMA iteração para o relatório.
         prev_pc         <= uut.u_parte_operativa.PC;
         prev_instr      <= uut.u_parte_operativa.Instr;
         prev_result     <= uut.u_parte_operativa.Result;
@@ -107,6 +145,7 @@ module tb_riscv();
         prev_zero       <= uut.u_parte_operativa.Zero;
         prev_jump       <= uut.u_unidade_controle.Jump;
         prev_pc_next    <= uut.u_parte_operativa.PCNext;
+        prev_funct3     <= uut.u_parte_operativa.funct3; // Salva o funct3 também
     end
 
 endmodule
