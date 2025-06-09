@@ -1,50 +1,48 @@
-// riscv_monociclo_topo.v
-`timescale 1ns/1ps
+`timescale 1ns / 1ps
 
-module riscv_monociclo_topo (
-    input         clk,
-    input         reset,
-    output [31:0] reg_a0_out // Saída para monitorar o registrador a0 (x10)
+module riscv_monociclo_topo(
+    input wire clk,
+    input wire reset
 );
-
-    // Fios para conectar a unidade de controle e a parte operativa
+    // Conexões entre a unidade de controle e a parte operativa
     wire [6:0] opcode;
     wire [2:0] funct3;
     wire [6:0] funct7;
-    wire       PCWrite;
-    wire       MemWrite;
-    wire       ALUSrc;
-    wire       RegWrite;
-    wire [1:0] ResultSrc;
+    wire [1:0] ALUOp;
+    wire ALUSrc, MemtoReg, RegWrite, MemRead, MemWrite, Branch, Jump;
     wire [3:0] ALUControl;
-
-    // Instanciação da Parte Operativa
-    parte_operativa u_parte_operativa (
+    
+    // Instanciação da unidade de controle
+    unidade_controle u_unidade_controle(
+        .opcode(opcode),
+        .funct3(funct3),
+        .funct7(funct7),
+        .ALUOp(ALUOp),
+        .ALUSrc(ALUSrc),
+        .MemtoReg(MemtoReg),
+        .RegWrite(RegWrite),
+        .MemRead(MemRead),
+        .MemWrite(MemWrite),
+        .Branch(Branch),
+        .Jump(Jump),
+        .ALUControl(ALUControl)
+    );
+    
+    // Instanciação da parte operativa
+    parte_operativa u_parte_operativa(
         .clk(clk),
         .reset(reset),
-        .PCWrite(PCWrite),
-        .MemWrite(MemWrite),
-        .ALUSrc(ALUSrc),
-        .RegWrite(RegWrite),
-        .ResultSrc(ResultSrc),
         .ALUControl(ALUControl),
-        .opcode(opcode),
-        .funct3(funct3),
-        .funct7(funct7),
-        .reg_a0_out(reg_a0_out)
-    );
-
-    // Instanciação da Unidade de Controle
-    unidade_controle u_unidade_controle (
-        .opcode(opcode),
-        .funct3(funct3),
-        .funct7(funct7),
-        .PCWrite(PCWrite),
-        .MemWrite(MemWrite),
         .ALUSrc(ALUSrc),
+        .MemtoReg(MemtoReg),
         .RegWrite(RegWrite),
-        .ResultSrc(ResultSrc),
-        .ALUControl(ALUControl)
+        .MemRead(MemRead),
+        .MemWrite(MemWrite),
+        .Branch(Branch),
+        .Jump(Jump),
+        .opcode(opcode),
+        .funct3(funct3),
+        .funct7(funct7)
     );
 
 endmodule

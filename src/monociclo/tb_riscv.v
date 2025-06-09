@@ -1,55 +1,47 @@
-// tb_riscv.v
-`timescale 1ns/1ps
+`timescale 1ns / 1ps  // Unidade de tempo: 1ns, precisão: 1ps
 
-module tb_riscv;
-
-    // Sinais para conectar ao módulo topo
+module tb_riscv();
     reg clk;
     reg reset;
-    wire [31:0] reg_a0_out;
-
-    // Instanciação do processador (DUT - Device Under Test)
-    riscv_monociclo_topo dut (
+    
+    // Instanciação do processador
+    riscv_monociclo_topo uut(
         .clk(clk),
-        .reset(reset),
-        .reg_a0_out(reg_a0_out)
+        .reset(reset)
     );
-
-    // Geração do Clock
+    
+    // Geração do clock com período de 10ns (50MHz)
     initial begin
         clk = 0;
-        forever #5 clk = ~clk; // Período de 10ns (100 MHz)
+        forever #5 clk = ~clk;  // Alterna a cada 5ns (período total = 10ns)
     end
-
-    // Procedimento de Teste
+    
+    // Sequência de teste em nanosegundos
     initial begin
-        // 1. Aplica o Reset
+        // Inicialização
         reset = 1;
-        #15; // Mantém o reset por 15ns
+        #1;  // 100ns com reset ativo
+        
+        // Desativa reset
         reset = 0;
+        $display("Reset desativado em %t ns", $time);
         
-        // O processador começará a executar as instruções da memória de instruções
-        // a cada borda de subida do clock.
-
-        // Vamos rodar por alguns ciclos para executar o programa de teste
-        #100; // Roda por 10 ciclos (100ns)
-
-        // Verificações (opcional, mas recomendado)
-        // Após 5 ciclos (50ns), a instrução LW deve ter completado.
-        // O valor carregado da memória (15) deve estar em x4.
-        // A instrução SW escreveu 15 no endereço 12.
-        // O registrador x3 deve conter 15.
+        // Executa por 500ns (50 ciclos de clock)
+        #500;
         
-        $display("Simulação finalizada.");
-        $stop; // Para o simulador
+        // Finaliza simulação
+        $display("Simulação finalizada em %t ns", $time);
+        $finish;
     end
-
-    // Opcional: Monitorar sinais importantes
+    
     initial begin
-        // Configura o dump de sinais para visualização no ModelSim (formato .vcd)
-        $dumpfile("waveform.vcd");
-        // Especifica quais sinais monitorar (nível 0 significa todos os sinais dentro do DUT)
-        $dumpvars(0, dut);
+        $monitor("Tempo: %0t ns | Clock: %b | Reset: %b | PC: %h", 
+                 $time, clk, reset, uut.u_parte_operativa.PC);
     end
-
+    
+    // Geração do arquivo de onda
+    initial begin
+        $dumpfile("riscv_wave.vcd");
+        $dumpvars(0, tb_riscv);
+    end
 endmodule

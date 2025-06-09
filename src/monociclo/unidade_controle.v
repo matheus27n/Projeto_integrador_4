@@ -1,76 +1,121 @@
-// unidade_controle.v
-`timescale 1ns/1ps
+`timescale 1ns / 1ps
 
-module unidade_controle (
-    // Entradas
-    input  [6:0] opcode,
-    input  [2:0] funct3, // Usado para diferenciar instruções com o mesmo opcode
-    input  [6:0] funct7, // Usado para diferenciar ADD de SUB
-    // Saídas (sinais de controle)
-    output reg PCWrite,
-    output reg MemWrite,
+module unidade_controle(
+    input wire [6:0] opcode,
+    input wire [2:0] funct3,
+    input wire [6:0] funct7,
+    output reg [1:0] ALUOp,
     output reg ALUSrc,
+    output reg MemtoReg,
     output reg RegWrite,
-    output reg [1:0] ResultSrc,
+    output reg MemRead,
+    output reg MemWrite,
+    output reg Branch,
+    output reg Jump,
     output reg [3:0] ALUControl
 );
-
-    // Lógica principal de decodificação baseada no opcode
+    // Decodificação do opcode
     always @(*) begin
-        // Valores padrão (seguros) - não escreve em nada
-        PCWrite    = 1'b1; // Por padrão, sempre avança o PC
-        MemWrite   = 1'b0;
-        ALUSrc     = 1'b0;
-        RegWrite   = 1'b0;
-        ResultSrc  = 2'b00;
-        ALUControl = 4'b0000; // Operação padrão: ADD
-
-        case (opcode)
-            // Instruções Tipo-R (ex: ADD, SUB)
+        case(opcode)
+            // Instruções do tipo R
             7'b0110011: begin
-                RegWrite   = 1'b1;
-                ALUSrc     = 1'b0; // Usa segundo registrador
-                ResultSrc  = 2'b00; // Resultado vem da ULA
-                // Decodifica a operação da ULA com base no funct3 e funct7
-                if (funct7 == 7'b0000000 && funct3 == 3'b000)
-                    ALUControl = 4'b0000; // ADD
-                else if (funct7 == 7'b0100000 && funct3 == 3'b000)
-                    ALUControl = 4'b0001; // SUB
-                else
-                    ALUControl = 4'bxxxx; // Operação não suportada
+                ALUSrc = 1'b0;
+                MemtoReg = 1'b0;
+                RegWrite = 1'b1;
+                MemRead = 1'b0;
+                MemWrite = 1'b0;
+                Branch = 1'b0;
+                Jump = 1'b0;
+                ALUOp = 2'b10;
             end
-
-            // Instruções Tipo-I (ex: ADDI)
-            7'b0010011: begin
-                RegWrite   = 1'b1;
-                ALUSrc     = 1'b1; // Usa o imediato
-                ResultSrc  = 2'b00; // Resultado vem da ULA
-                ALUControl = 4'b0000; // ADD
-            end
-
-            // Instruções LW (Load Word)
+            // LW
             7'b0000011: begin
-                RegWrite   = 1'b1;
-                ALUSrc     = 1'b1; // Imediato para calcular endereço
-                ResultSrc  = 2'b01; // Resultado vem da memória
-                MemWrite   = 1'b0;
-                ALUControl = 4'b0000; // ULA calcula endereço (soma)
+                ALUSrc = 1'b1;
+                MemtoReg = 1'b1;
+                RegWrite = 1'b1;
+                MemRead = 1'b1;
+                MemWrite = 1'b0;
+                Branch = 1'b0;
+                Jump = 1'b0;
+                ALUOp = 2'b00;
             end
-
-            // Instruções SW (Store Word)
+            // SW
             7'b0100011: begin
-                RegWrite   = 1'b0; // Não escreve no banco de registradores
-                ALUSrc     = 1'b1; // Imediato para calcular endereço
-                MemWrite   = 1'b1; // Habilita escrita na memória
-                ALUControl = 4'b0000; // ULA calcula endereço (soma)
+                ALUSrc = 1'b1;
+                MemtoReg = 1'bx;
+                RegWrite = 1'b0;
+                MemRead = 1'b0;
+                MemWrite = 1'b1;
+                Branch = 1'b0;
+                Jump = 1'b0;
+                ALUOp = 2'b00;
             end
-
-            // TODO: Adicionar decodificação para BEQ, BNE, JAL, etc.
-
+            // BEQ
+            7'b1100011: begin
+                ALUSrc = 1'b0;
+                MemtoReg = 1'bx;
+                RegWrite = 1'b0;
+                MemRead = 1'b0;
+                MemWrite = 1'b0;
+                Branch = 1'b1;
+                Jump = 1'b0;
+                ALUOp = 2'b01;
+            end
+            // JAL
+            7'b1101111: begin
+                ALUSrc = 1'bx;
+                MemtoReg = 1'b0;
+                RegWrite = 1'b1;
+                MemRead = 1'b0;
+                MemWrite = 1'b0;
+                Branch = 1'b0;
+                Jump = 1'b1;
+                ALUOp = 2'bxx;
+            end
+            // Operações Imediatas
+            7'b0010011: begin
+                ALUSrc = 1'b1;
+                MemtoReg = 1'b0;
+                RegWrite = 1'b1;
+                MemRead = 1'b0;
+                MemWrite = 1'b0;
+                Branch = 1'b0;
+                Jump = 1'b0;
+                ALUOp = 2'b10;
+            end
             default: begin
-                // Instrução desconhecida - manter valores padrão
+                ALUSrc = 1'bx;
+                MemtoReg = 1'bx;
+                RegWrite = 1'b0;
+                MemRead = 1'b0;
+                MemWrite = 1'b0;
+                Branch = 1'b0;
+                Jump = 1'b0;
+                ALUOp = 2'bxx;
             end
         endcase
     end
-
+    
+    // Decodificação da ALU
+    always @(*) begin
+        case(ALUOp)
+            2'b00: ALUControl = 4'b0010; // ADD
+            2'b01: ALUControl = 4'b0110; // SUB
+            2'b10: begin
+                case(funct3)
+                    3'b000: 
+                        if (opcode == 7'b0110011 && funct7[5] == 1'b1)
+                            ALUControl = 4'b0110; // SUB
+                        else
+                            ALUControl = 4'b0010; // ADD
+                    3'b110: ALUControl = 4'b0001; // OR
+                    3'b111: ALUControl = 4'b0000; // AND
+                    3'b001: ALUControl = 4'b0011; // SLL
+                    3'b101: ALUControl = 4'b0101; // SRL
+                    default: ALUControl = 4'bxxxx;
+                endcase
+            end
+            default: ALUControl = 4'bxxxx;
+        endcase
+    end
 endmodule
