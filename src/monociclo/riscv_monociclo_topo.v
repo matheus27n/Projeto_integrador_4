@@ -3,12 +3,13 @@
 module riscv_monociclo_topo(
     input wire clk,
     input wire reset
+    // Para depuração, você poderia adicionar uma saída aqui, ex: output wire [31:0] reg_a0_out
 );
-    // Conexões entre a unidade de controle e a parte operativa
+    // === Conexões entre os módulos ===
     wire [6:0] opcode;
     wire [2:0] funct3;
     wire [6:0] funct7;
-    wire [1:0] ALUOp;
+    // --- Sinais de Controle ---
     wire ALUSrc, MemtoReg, RegWrite, MemRead, MemWrite, Branch, Jump;
     wire [3:0] ALUControl;
     
@@ -17,7 +18,7 @@ module riscv_monociclo_topo(
         .opcode(opcode),
         .funct3(funct3),
         .funct7(funct7),
-        .ALUOp(ALUOp),
+        // CORREÇÃO: ALUOp foi removido pois agora é um sinal interno do controle
         .ALUSrc(ALUSrc),
         .MemtoReg(MemtoReg),
         .RegWrite(RegWrite),
@@ -44,5 +45,4 @@ module riscv_monociclo_topo(
         .funct3(funct3),
         .funct7(funct7)
     );
-
 endmodule
