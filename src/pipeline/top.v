@@ -1,23 +1,30 @@
+// top.v - Versão Final
 module top (
     input  wire        clk,
     input  wire        reset,
-    output wire [31:0] pc_out,
-    output wire        stall_out, // <-- SAÍDA NOVA
-    output wire        flush_out  // <-- SAÍDA NOVA
+    // Saídas para o testbench decodificador
+    output wire [31:0] wb_pc,
+    output wire [31:0] wb_instruction,
+    output wire [31:0] wb_write_data,
+    output wire [4:0]  wb_rd_addr,
+    output wire        wb_RegWrite,
+    output wire        wb_MemWrite,
+    output wire [31:0] wb_mem_addr,
+    output wire [31:0] wb_mem_wdata
 );
 
-    wire stall_internal;
-    wire flush_internal;
-    
     datapath dp (
         .clk(clk),
         .reset(reset),
-        .pc_out(pc_out),
-        .o_stall(stall_internal), // Conecta a nova saída do datapath
-        .o_flush(flush_internal)  // Conecta a nova saída do datapath
+        // Conecta todas as novas saídas do datapath
+        .o_wb_pc(wb_pc),
+        .o_wb_instr(wb_instruction),
+        .o_wb_write_data(wb_write_data),
+        .o_wb_rd_addr(wb_rd_addr),
+        .o_wb_RegWrite(wb_RegWrite),
+        .o_wb_MemWrite(wb_MemWrite),
+        .o_wb_mem_addr(wb_mem_addr),
+        .o_wb_mem_wdata(wb_mem_wdata)
     );
-
-    assign stall_out = stall_internal;
-    assign flush_out = flush_internal;
 
 endmodule
