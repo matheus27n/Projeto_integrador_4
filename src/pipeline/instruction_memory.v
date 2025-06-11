@@ -9,11 +9,20 @@ assign instruction = memory[addr[9:2]]; // palavra alinhada (word aligned)
 
 initial begin
     // Exemplo de instruções para teste
-    memory[0] = 32'h00500093; // addi x1, x0, 5
-    memory[1] = 32'h00a00113; // addi x2, x0, 10
-    memory[2] = 32'h002081b3; // add x3, x1, x2
-    memory[3] = 32'h00302023; // sw x3, 0(x0)
-    memory[4] = 32'h00002283; // lw x4, 0(x0)
+ memory[0] = 32'h01000093; // addi x1, x0, 16
+    memory[1] = 32'h02A00113; // addi x2, x0, 42
+    memory[2] = 32'h00208823; // sw   x2, 16(x1) -> offset=16, rs1=x1, rs2=x2. Erro, deveria ser 0(x1). Corrigido:
+    memory[2] = 32'h00208023; // sw   x2, 0(x1)
+    memory[3] = 32'h0000A183; // lw   x3, 0(x1)
+    memory[4] = 32'h00318233; // add  x4, x3, x0
+    memory[5] = 32'h00220863; // beq  x4, x2, +8 bytes (pula 2 instruções para 0x20)
+    memory[6] = 32'h06300293; // addi x5, x0, 99
+    memory[7] = 32'h06300293; // addi x5, x0, 99 (será "comida" pelo flush)
+    memory[8] = 32'h06400313; // L1: addi x6, x0, 100
+    memory[9] = 32'h008003EF; // jal  x7, +8 bytes (pula 2 instruções para 0x30)
+    memory[10] = 32'h05800413; // addi x8, x0, 88
+    memory[11] = 32'h00000013; // nop
+    memory[12] = 32'h0C800493; // L2: addi x9, x0, 200
 end
 
 endmodule
