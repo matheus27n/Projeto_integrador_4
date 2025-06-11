@@ -1,4 +1,3 @@
-// alu_control.v - Versão sem localparam
 module alu_control (
     input  wire [1:0] ALUOp,
     input  wire [2:0] funct3,
@@ -19,7 +18,7 @@ always @(*) begin
         end
         2'b10: begin // Para instruções R-Type e I-Type
             case (funct3)
-                3'b000: alu_control = (ALUOp == 2'b10 && funct7[5]) ? 4'b0110 : 4'b0010; // SUB ou ADD/ADDI
+                3'b000: alu_control = (funct7[5]) ? 4'b0110 : 4'b0010; // SUB ou ADD/ADDI
                 3'b001: alu_control = 4'b1001; // SLL_OP
                 3'b010: alu_control = 4'b0111; // SLT_OP
                 3'b011: alu_control = 4'b1010; // SLTU_OP

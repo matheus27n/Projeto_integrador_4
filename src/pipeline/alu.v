@@ -21,7 +21,7 @@ always @(*) begin
         4'b1010: result = (a < b) ? 1 : 0;          // SLTU (sem sinal)
         4'b1011: result = a >> b[4:0];              // SRL (Shift Right Logical)
         4'b1100: result = $signed(a) >>> b[4:0];    // SRA (Shift Right Arithmetic)
-        default: result = 32'hdeadbeef;           // Valor de erro
+        default: result = 32'b0;
     endcase
 end
 

@@ -9,14 +9,20 @@ module testbench;
     wire [31:0] instr_id_out, instr_ex_out, instr_mem_out, instr_wb_out;
     wire        stall_out, flush_out;
     wire [1:0]  forwardA_out, forwardB_out;
+    wire        memwrite_out;
+    wire [31:0] memaddr_out, memdata_out;
 
     // --- Instanciação do processador ---
     datapath uut (
-        .clk(clk), .reset(reset), .o_pc_if(pc_if_out),
+        .clk(clk), .reset(reset),
+        .o_pc_if(pc_if_out),
         .o_instr_id(instr_id_out), .o_instr_ex(instr_ex_out),
         .o_instr_mem(instr_mem_out), .o_instr_wb(instr_wb_out),
         .o_stall(stall_out), .o_flush(flush_out),
-        .o_forwardA(forwardA_out), .o_forwardB(forwardB_out)
+        .o_forwardA(forwardA_out), .o_forwardB(forwardB_out),
+        .o_wb_MemWrite(memwrite_out),
+        .o_wb_mem_addr(memaddr_out),
+        .o_wb_mem_wdata(memdata_out)
     );
 
     // --- Geração de clock e reset ---
@@ -113,11 +119,34 @@ module testbench;
             $display("\n//----------------[ CICLO %0d @ t=%0t ]----------------//", cycle_count, $time);
 
             $display("EVENTOS DO CICLO:");
-            if (stall_out)          $display("   >> STALL! Hazard de carga-uso detectado.");
-            else if (flush_out)     $display("   >> FLUSH! Desvio ou salto em andamento.");
-            else if (forwardA_out != 0 || forwardB_out != 0)
-                                    $display("   >> FORWARDING! Resultado adiantado para ULA.");
-            else                    $display("   (Nenhum evento especial)");
+            if (stall_out)
+                $display("   >> STALL! Hazard de carga-uso detectado.");
+            if (flush_out)
+                $display("   >> FLUSH! Desvio ou salto em andamento.");
+            if (forwardA_out != 0 || forwardB_out != 0)
+                $display("   >> FORWARDING! Resultado adiantado para ULA.");
+
+            // Detecta se a instrução na EX ou MEM é LW ou SW
+            if (instr_ex_out[6:0] == 7'b0000011) begin // lw
+                $display("   >> LOAD: lw em EX acessando endereço %0d (x%0d + %0d)",
+                    $signed(uut.alu_result), uut.id_ex_rs1, uut.id_ex_imm);
+            end
+            if (instr_ex_out[6:0] == 7'b0100011) begin // sw
+                $display("   >> STORE: sw em EX acessando endereço %0d (x%0d + %0d)",
+                    $signed(uut.alu_result), uut.id_ex_rs1, uut.id_ex_imm);
+            end
+            if (instr_mem_out[6:0] == 7'b0000011) begin // lw
+                $display("   >> LOAD: lw em MEM carregando de endereço %0d", uut.ex_mem_alu_result);
+            end
+            if (instr_mem_out[6:0] == 7'b0100011) begin // sw
+                $display("   >> STORE: sw em MEM armazenando no endereço %0d", uut.ex_mem_alu_result);
+            end
+
+            if (!stall_out && !flush_out && forwardA_out == 0 && forwardB_out == 0 &&
+                instr_ex_out[6:0] != 7'b0000011 && instr_ex_out[6:0] != 7'b0100011 &&
+                instr_mem_out[6:0] != 7'b0000011 && instr_mem_out[6:0] != 7'b0100011) begin
+                $display("   (Nenhum evento especial)");
+            end
 
             $display("PIPELINE:");
             $display("   IF : [%h] %s", uut.pc,           decode_instruction(uut.imem.memory[uut.pc >> 2]));
