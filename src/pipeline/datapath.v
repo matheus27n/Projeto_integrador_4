@@ -3,7 +3,9 @@
 module datapath (
     input  wire        clk,
     input  wire        reset,
-    output wire [31:0] pc_out
+    output wire [31:0] pc_out,
+    output wire        o_stall, // <-- SAÍDA NOVA
+    output wire        o_flush  // <-- SAÍDA NOVA
 );
 
 //================================================================//
@@ -293,5 +295,7 @@ end
 //                      ESTÁGIO WB (Write Back)                   //
 //================================================================//
 assign wb_data = (mem_wb_MemToReg) ? mem_wb_mem_data : mem_wb_alu_result;
+assign o_stall = stall;
+assign o_flush = flush;
 
 endmodule

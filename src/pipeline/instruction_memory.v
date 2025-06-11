@@ -13,7 +13,7 @@ initial begin
     memory[1] = 32'h02A00113; // addi x2, x0, 42
     memory[2] = 32'h00208823; // sw   x2, 16(x1) -> offset=16, rs1=x1, rs2=x2. Erro, deveria ser 0(x1). Corrigido:
     memory[2] = 32'h00208023; // sw   x2, 0(x1)
-    memory[3] = 32'h00012183; // lw x3, 0(x1) <-- Este hex está correto (usa x1)    memory[4] = 32'h00318233; // add  x4, x3, x0
+    memory[3] = 32'h00012183; // lw x3, 0(x1) <-- CORRETO; // lw x3, 0(x1) <-- Este hex está correto (usa x1)    memory[4] = 32'h00318233; // add  x4, x3, x0
     memory[5] = 32'h00220863; // beq  x4, x2, +8 bytes (pula 2 instruções para 0x20)
     memory[6] = 32'h06300293; // addi x5, x0, 99
     memory[7] = 32'h06300293; // addi x5, x0, 99 (será "comida" pelo flush)
