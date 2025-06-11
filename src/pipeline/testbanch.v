@@ -1,8 +1,15 @@
 `timescale 1ns / 1ps
 
+// ====================================================================
+//                      TESTBENCH - RISC-V Pipeline
+// ====================================================================
+// Monitora os estágios do pipeline, forwarding, stalls e registros
+// Permite visualização em terminal + geração de waveform (VCD)
+// ====================================================================
+
 module testbench;
 
-    // --- Conexões com o processador ---
+    // === Sinais do processador ===
     reg clk;
     reg reset;
     wire [31:0] pc_if_out;
@@ -12,7 +19,7 @@ module testbench;
     wire        memwrite_out;
     wire [31:0] memaddr_out, memdata_out;
 
-    // --- Instanciação do processador ---
+    // === Instanciação do Datapath ===
     datapath uut (
         .clk(clk), .reset(reset),
         .o_pc_if(pc_if_out),
@@ -25,17 +32,19 @@ module testbench;
         .o_wb_mem_wdata(memdata_out)
     );
 
-    // --- Geração de clock e reset ---
+    // === Geração do Clock ===
     initial begin
         clk = 0;
         forever #5 clk = ~clk;
     end
 
+    // === Geração de waveform para GTKWave ===
     initial begin
         $dumpfile("waveform.vcd");
         $dumpvars(0, uut);
     end
 
+    // === Sequência de Reset e Timeout ===
     initial begin
         $timeformat(-9, 1, " ns", 10);
         reset = 1; #15; reset = 0;
@@ -44,13 +53,12 @@ module testbench;
         $finish;
     end
 
-    // --- Função para decodificação de instruções ---
+    // === Decodificador de instruções para impressão legível ===
     function automatic string decode_instruction (input [31:0] instr);
         reg [4:0] rd, rs1, rs2;
         reg [6:0] opcode, funct7;
         reg [2:0] funct3;
         reg signed [31:0] imm;
-
         begin
             if (instr == 32'h13 || instr == 0)
                 return "--- VAZIO / NOP ---";
@@ -92,17 +100,16 @@ module testbench;
                 end
                 7'b1100011: begin
                     imm = $signed({{19{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0});
-                    if (funct3 == 3'b001)
-                        return $sformatf("bne x%0d,x%0d,%0d", rs1, rs2, imm);
-                    else
-                        return $sformatf("beq x%0d,x%0d,%0d", rs1, rs2, imm);
+                    return (funct3 == 3'b001) ?
+                        $sformatf("bne x%0d,x%0d,%0d", rs1, rs2, imm) :
+                        $sformatf("beq x%0d,x%0d,%0d", rs1, rs2, imm);
                 end
                 default: return "--- INSTRUCAO DESCONHECIDA ---";
             endcase
         end
     endfunction
 
-    // --- Log principal do ciclo ---
+    // === Monitoramento do Pipeline ===
     integer cycle_count = 0;
     reg [31:0] reg_prev[0:31];
 
@@ -126,21 +133,15 @@ module testbench;
             if (forwardA_out != 0 || forwardB_out != 0)
                 $display("   >> FORWARDING! Resultado adiantado para ULA.");
 
-            // Detecta se a instrução na EX ou MEM é LW ou SW
-            if (instr_ex_out[6:0] == 7'b0000011) begin // lw
-                $display("   >> LOAD: lw em EX acessando endereço %0d (x%0d + %0d)",
-                    $signed(uut.alu_result), uut.id_ex_rs1, uut.id_ex_imm);
-            end
-            if (instr_ex_out[6:0] == 7'b0100011) begin // sw
-                $display("   >> STORE: sw em EX acessando endereço %0d (x%0d + %0d)",
-                    $signed(uut.alu_result), uut.id_ex_rs1, uut.id_ex_imm);
-            end
-            if (instr_mem_out[6:0] == 7'b0000011) begin // lw
-                $display("   >> LOAD: lw em MEM carregando de endereço %0d", uut.ex_mem_alu_result);
-            end
-            if (instr_mem_out[6:0] == 7'b0100011) begin // sw
-                $display("   >> STORE: sw em MEM armazenando no endereço %0d", uut.ex_mem_alu_result);
-            end
+            // LOAD e STORE em EX e MEM
+            if (instr_ex_out[6:0] == 7'b0000011)
+                $display("   >> LOAD  (EX): lw -> endereco %0d (x%0d + %0d)", $signed(uut.alu_result), uut.id_ex_rs1, uut.id_ex_imm);
+            if (instr_ex_out[6:0] == 7'b0100011)
+                $display("   >> STORE (EX): sw -> endereco %0d (x%0d + %0d)", $signed(uut.alu_result), uut.id_ex_rs1, uut.id_ex_imm);
+            if (instr_mem_out[6:0] == 7'b0000011)
+                $display("   >> LOAD  (MEM): lendo de endereco %0d", uut.ex_mem_alu_result);
+            if (instr_mem_out[6:0] == 7'b0100011)
+                $display("   >> STORE (MEM): escrevendo em endereco %0d", uut.ex_mem_alu_result);
 
             if (!stall_out && !flush_out && forwardA_out == 0 && forwardB_out == 0 &&
                 instr_ex_out[6:0] != 7'b0000011 && instr_ex_out[6:0] != 7'b0100011 &&
@@ -177,6 +178,7 @@ module testbench;
 
             cycle_count <= cycle_count + 1;
 
+            // Critério de término baseado em x20
             if (uut.regfile.registers[20] === 100) begin
                 #10;
                 $display("\n================== FIM DA EXECUÇÃO ==================");
