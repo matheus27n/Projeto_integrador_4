@@ -154,8 +154,11 @@ control_unit ctrl (
 );
 
 // --- Gerador de Imediato (simplificado para I-type) ---
-// Em um processador completo, isso seria mais complexo
-assign imm = {{21{if_id_instr[31]}}, if_id_instr[30:20]}; // S-type e B-type usam outro formato
+imm_gen immediate_generator (
+    .instruction(if_id_instr), // MUDANÇA: Passa a instrução inteira
+    .opcode(opcode),
+    .imm(imm)
+);
 
 // --- Unidade de Detecção de Riscos ---
 hazard_unit hazard (

@@ -7,18 +7,22 @@ module data_memory (
     output reg  [31:0] read_data
 );
 
-reg [31:0] memory [0:255]; // 1KB
+// Memória de 1024 Bytes (256 palavras de 32 bits)
+reg [31:0] memory [0:255];
 
+// A escrita ocorre na borda de subida do clock se MemWrite estiver ativo
 always @(posedge clk) begin
-    if (MemWrite)
+    if (MemWrite) begin
         memory[addr[9:2]] <= write_data;
+    end
 end
 
-always @(*) begin
-    if (MemRead)
-        read_data = memory[addr[9:2]];
-    else
-        read_data = 0;
+// A leitura também é síncrona. O dado estará disponível no *próximo* ciclo.
+// O pipeline já lida com essa latência de 1 ciclo.
+always @(posedge clk) begin
+    if (MemRead) begin
+        read_data <= memory[addr[9:2]];
+    end
 end
 
 endmodule
