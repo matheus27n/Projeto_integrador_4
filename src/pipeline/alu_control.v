@@ -30,7 +30,13 @@ always @(*) begin
         // Operações do tipo R-Type e I-Type aritméticas
         2'b10: begin
             case (funct3)
-                3'b000: alu_control = (funct7[5]) ? 4'b0110 : 4'b0010; // SUB ou ADD/ADDI
+                3'b000: begin // Para ADD, ADDI, SUB
+                    if (funct7[5] == 1'b1) begin
+                        alu_control = 4'b0110; // SUB
+                    end else begin
+                        alu_control = 4'b0010; // ADD ou ADDI
+                    end
+                end
                 3'b001: alu_control = 4'b1001; // SLL
                 3'b010: alu_control = 4'b0111; // SLT
                 3'b011: alu_control = 4'b1010; // SLTU

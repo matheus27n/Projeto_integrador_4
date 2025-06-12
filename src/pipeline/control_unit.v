@@ -1,19 +1,19 @@
 // ========================================================
 // Módulo: control_unit
 // Descrição: Unidade de controle principal do processador RISC-V.
-//            Gera sinais de controle com base no opcode da instrução.
+//           Gera sinais de controle com base no opcode da instrução.
 // ========================================================
 module control_unit (
-    input  wire [6:0]  opcode,       // Opcode da instrução (bits [6:0])
-    output reg         RegWrite,     // Habilita escrita no banco de registradores
-    output reg [1:0]   ResultSrc,    // Seleção da fonte de dados para o write-back
-    output reg         MemRead,      // Habilita leitura da memória de dados
-    output reg         MemWrite,     // Habilita escrita na memória de dados
-    output reg [1:0]   ALUOp,        // Define operação da ALU (decodificada por alu_control)
-    output reg         ALUSrc,       // Se 1, segundo operando da ALU vem do imediato
-    output reg         ALUASrc,      // Se 1, primeiro operando da ALU vem do PC (usado por AUIPC)
-    output reg         Branch,       // Sinaliza instrução de desvio condicional
-    output reg [1:0]   Jump          // 01 = JAL, 10 = JALR
+    input  wire [6:0]  opcode,      // Opcode da instrução (bits [6:0])
+    output reg         RegWrite,    // Habilita escrita no banco de registradores
+    output reg [1:0]   ResultSrc,   // Seleção da fonte de dados para o write-back
+    output reg         MemRead,     // Habilita leitura da memória de dados
+    output reg         MemWrite,    // Habilita escrita na memória de dados
+    output reg [1:0]   ALUOp,       // Define operação da ALU (decodificada por alu_control)
+    output reg         ALUSrc,      // Se 1, segundo operando da ALU vem do imediato
+    output reg         ALUASrc,     // Se 1, primeiro operando da ALU vem do PC (usado por AUIPC)
+    output reg         Branch,      // Sinaliza instrução de desvio condicional
+    output reg [1:0]   Jump         // 01 = JAL, 10 = JALR
 );
 
 always @(*) begin
@@ -31,14 +31,16 @@ always @(*) begin
     // ======================= Decodificação ========================
     case (opcode)
         7'b0110011: begin // R-Type (ex: add, sub, and, or)
-            RegWrite = 1;
-            ALUOp    = 2'b10;
+            RegWrite  = 1;
+            ResultSrc = 2'b00; // <<--- CORREÇÃO AQUI
+            ALUOp     = 2'b10;
         end
 
         7'b0010011: begin // I-Type aritmético/lógico (ex: addi, xori)
-            RegWrite = 1;
-            ALUSrc   = 1;
-            ALUOp    = 2'b10;
+            RegWrite  = 1;
+            ResultSrc = 2'b00; // <<--- CORREÇÃO AQUI
+            ALUSrc    = 1;
+            ALUOp     = 2'b10;
         end
 
         7'b0000011: begin // Load (ex: lw)
@@ -80,7 +82,7 @@ always @(*) begin
         7'b0010111: begin // AUIPC
             RegWrite  = 1;
             ALUSrc    = 1;
-            ALUASrc   = 1;     // Operando A vem do PC
+            ALUASrc   = 1;
             ALUOp     = 2'b00; // Apenas soma
         end
     endcase

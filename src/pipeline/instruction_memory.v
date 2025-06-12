@@ -1,4 +1,5 @@
 module instruction_memory (
+    //incluir clock 
     input  wire [31:0] addr,
     output wire [31:0] instruction
 );
@@ -58,6 +59,15 @@ memory[7] = 32'h0020C063; // bne  x1, x2, +8 (pula próximo)
 memory[8] = 32'h04200313; // addi x6, x0, 66 (será pulada)
 memory[9] = 32'hFF5FF06F; // jal  x7, -20 (loopa pro lw)
 
+// Endereço | Hexadecimal | Instrução           | O que faz
+//---------------------------------------------------------------------------------
+// memory[0] = 32'h00A00093; // addi x1, x0, 10     ; x1 = 10
+// memory[1] = 32'h00700113; // addi x2, x0, 7      ; x2 = 7
+// memory[2] = 32'h002081B3; // add  x3, x1, x2      ; x3 = x1 + x2
+// memory[3] = 32'h40208233; // sub  x4, x1, x2      ; x4 = x1 - x2
+// memory[4] = 32'h00302023; // sw   x3, 0(x0)       ; Salva x3 no endereço de memória 0
+// memory[5] = 32'h00002283; // lw   x5, 0(x0)       ; Carrega do endereço 0 para x5
+// memory[6] = 32'h00128333; // add  x6, x5, x1      ; x6 = x5 + x1 (DEVE CAUSAR STALL)
 
 // memory[0]  = 32'h00500093; // addi x1, x0, 5
 // memory[1]  = 32'h00a00113; // addi x2, x0, 10

@@ -233,14 +233,21 @@ module datapath (
     );
 
     // MUX para o primeiro operando da ULA (OperandA), considerando forwarding.
+    wire [31:0] wb_forward_data;
+    assign wb_forward_data = (mem_wb_ResultSrc == 2'b01) ? mem_wb_mem_data  : // Forward de um LW
+                             (mem_wb_ResultSrc == 2'b10) ? mem_wb_imm       : // Forward de um LUI
+                             (mem_wb_ResultSrc == 2'b11) ? mem_wb_pc_plus_4 : // Forward de um JAL/JALR
+                                                           mem_wb_alu_result; // Forward de uma op. da ULA
+
+    // MUX para o primeiro operando da ULA (OperandA), agora corrigido.
     assign alu_a_mux_in = (id_ex_ALUASrc) ? id_ex_pc : id_ex_reg_data1;
-    assign operandA = (forwardA == 2'b10) ? ex_mem_alu_result : // Forward do estágio MEM (EX -> EX)
-                      (forwardA == 2'b01) ? wb_data           : // Forward do estágio WB (MEM -> EX)
+    assign operandA = (forwardA == 2'b10) ? ex_mem_alu_result : // Forward do estágio MEM
+                      (forwardA == 2'b01) ? wb_forward_data   : // Forward do estágio WB (sem loop)
                                             alu_a_mux_in;
 
-    // MUX para o segundo operando da ULA (OperandB), considerando forwarding.
-    assign operandB = (forwardB == 2'b10) ? ex_mem_alu_result : // Forward do estágio MEM (EX -> EX)
-                      (forwardB == 2'b01) ? wb_data           : // Forward do estágio WB (MEM -> EX)
+    // MUX para o segundo operando da ULA (OperandB), agora corrigido.
+    assign operandB = (forwardB == 2'b10) ? ex_mem_alu_result : // Forward do estágio MEM
+                      (forwardB == 2'b01) ? wb_forward_data   : // Forward do estágio WB (sem loop)
                                             id_ex_reg_data2;
 
     // MUX final para a segunda entrada da ULA, que escolhe entre o operando B e o imediato.

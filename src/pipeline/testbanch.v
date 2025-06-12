@@ -53,14 +53,16 @@ module testbench;
         $finish;
     end
 
-    // === Decodificador de instruções para impressão legível ===
+    // =============================================================================
+    // === 🛠️ Decodificador de instruções COMPLETO para impressão legível 🛠️ ===
+    // =============================================================================
     function automatic string decode_instruction (input [31:0] instr);
         reg [4:0] rd, rs1, rs2;
         reg [6:0] opcode, funct7;
         reg [2:0] funct3;
         reg signed [31:0] imm;
         begin
-            if (instr == 32'h13 || instr == 0)
+            if (instr == 32'h00000013 || instr == 0)
                 return "--- VAZIO / NOP ---";
 
             opcode = instr[6:0];
@@ -71,38 +73,77 @@ module testbench;
             funct7 = instr[31:25];
 
             case (opcode)
+                // --- R-Type ---
                 7'b0110011: begin
                     case (funct3)
-                        3'b000: return funct7[5] ? $sformatf("sub x%0d,x%0d,x%0d", rd, rs1, rs2)
-                                                : $sformatf("add x%0d,x%0d,x%0d", rd, rs1, rs2);
+                        3'b000: return funct7[5] ? $sformatf("sub x%0d,x%0d,x%0d", rd, rs1, rs2) : $sformatf("add x%0d,x%0d,x%0d", rd, rs1, rs2);
                         3'b001: return $sformatf("sll x%0d,x%0d,x%0d", rd, rs1, rs2);
                         3'b010: return $sformatf("slt x%0d,x%0d,x%0d", rd, rs1, rs2);
                         3'b011: return $sformatf("sltu x%0d,x%0d,x%0d", rd, rs1, rs2);
                         3'b100: return $sformatf("xor x%0d,x%0d,x%0d", rd, rs1, rs2);
-                        3'b101: return funct7[5] ? $sformatf("sra x%0d,x%0d,x%0d", rd, rs1, rs2)
-                                                : $sformatf("srl x%0d,x%0d,x%0d", rd, rs1, rs2);
+                        3'b101: return funct7[5] ? $sformatf("sra x%0d,x%0d,x%0d", rd, rs1, rs2) : $sformatf("srl x%0d,x%0d,x%0d", rd, rs1, rs2);
                         3'b110: return $sformatf("or x%0d,x%0d,x%0d", rd, rs1, rs2);
                         3'b111: return $sformatf("and x%0d,x%0d,x%0d", rd, rs1, rs2);
                         default: return "R-type ???";
                     endcase
                 end
+                // --- I-Type (Aritmético/Lógico) ---
                 7'b0010011: begin
                     imm = $signed(instr[31:20]);
-                    return $sformatf("addi x%0d,x%0d,%0d", rd, rs1, imm);
+                    case(funct3)
+                        3'b000: return $sformatf("addi x%0d,x%0d,%0d", rd, rs1, imm);
+                        3'b010: return $sformatf("slti x%0d,x%0d,%0d", rd, rs1, imm);
+                        3'b011: return $sformatf("sltiu x%0d,x%0d,%0d", rd, rs1, imm);
+                        3'b100: return $sformatf("xori x%0d,x%0d,%0d", rd, rs1, imm);
+                        3'b110: return $sformatf("ori x%0d,x%0d,%0d", rd, rs1, imm);
+                        3'b111: return $sformatf("andi x%0d,x%0d,%0d", rd, rs1, imm);
+                        3'b001: return $sformatf("slli x%0d,x%0d,%0d", rd, rs1, instr[24:20]); // shamt
+                        3'b101: return funct7[5] ? $sformatf("srai x%0d,x%0d,%0d", rd, rs1, instr[24:20]) : $sformatf("srli x%0d,x%0d,%0d", rd, rs1, instr[24:20]);
+                        default: return "I-type ???";
+                    endcase
                 end
+                // --- I-Type (Load) ---
                 7'b0000011: begin
                     imm = $signed(instr[31:20]);
                     return $sformatf("lw x%0d,%0d(x%0d)", rd, imm, rs1);
                 end
+                // --- S-Type (Store) ---
                 7'b0100011: begin
                     imm = $signed({instr[31:25], instr[11:7]});
                     return $sformatf("sw x%0d,%0d(x%0d)", rs2, imm, rs1);
                 end
+                // --- B-Type (Branch) ---
                 7'b1100011: begin
                     imm = $signed({{19{instr[31]}}, instr[7], instr[30:25], instr[11:8], 1'b0});
-                    return (funct3 == 3'b001) ?
-                        $sformatf("bne x%0d,x%0d,%0d", rs1, rs2, imm) :
-                        $sformatf("beq x%0d,x%0d,%0d", rs1, rs2, imm);
+                    case(funct3)
+                        3'b000: return $sformatf("beq x%0d,x%0d,%0d", rs1, rs2, imm);
+                        3'b001: return $sformatf("bne x%0d,x%0d,%0d", rs1, rs2, imm);
+                        3'b100: return $sformatf("blt x%0d,x%0d,%0d", rs1, rs2, imm);
+                        3'b101: return $sformatf("bge x%0d,x%0d,%0d", rs1, rs2, imm);
+                        3'b110: return $sformatf("bltu x%0d,x%0d,%0d", rs1, rs2, imm);
+                        3'b111: return $sformatf("bgeu x%0d,x%0d,%0d", rs1, rs2, imm);
+                        default: return "B-type ???";
+                    endcase
+                end
+                // --- U-Type (LUI) ---
+                7'b0110111: begin
+                    imm = instr[31:12];
+                    return $sformatf("lui x%0d,0x%h", rd, imm);
+                end
+                // --- U-Type (AUIPC) ---
+                7'b0010111: begin
+                    imm = instr[31:12];
+                    return $sformatf("auipc x%0d,0x%h", rd, imm);
+                end
+                // --- J-Type (JAL) ---
+                7'b1101111: begin
+                    imm = $signed({{11{instr[31]}}, instr[19:12], instr[20], instr[30:21], 1'b0});
+                    return $sformatf("jal x%0d, %0d", rd, imm);
+                end
+                // --- I-Type (JALR) ---
+                7'b1100111: begin
+                    imm = $signed(instr[31:20]);
+                    return $sformatf("jalr x%0d, %0d(x%0d)", rd, imm, rs1);
                 end
                 default: return "--- INSTRUCAO DESCONHECIDA ---";
             endcase
@@ -142,7 +183,8 @@ module testbench;
                 $display("   >> LOAD  (MEM): lendo de endereco %0d", uut.ex_mem_alu_result);
             if (instr_mem_out[6:0] == 7'b0100011)
                 $display("   >> STORE (MEM): escrevendo em endereco %0d", uut.ex_mem_alu_result);
-
+            
+            // Condição para imprimir "Nenhum evento especial"
             if (!stall_out && !flush_out && forwardA_out == 0 && forwardB_out == 0 &&
                 instr_ex_out[6:0] != 7'b0000011 && instr_ex_out[6:0] != 7'b0100011 &&
                 instr_mem_out[6:0] != 7'b0000011 && instr_mem_out[6:0] != 7'b0100011) begin
@@ -177,12 +219,12 @@ module testbench;
             end
 
             cycle_count <= cycle_count + 1;
-
-            // Critério de término baseado em x20
+            
+            // Critério de término baseado em um registrador específico (ex: x20)
             if (uut.regfile.registers[20] === 100) begin
                 #10;
                 $display("\n================== FIM DA EXECUÇÃO ==================");
-                $display("||     SUCESSO! x20 = 100, execução finalizada.    ||");
+                $display("||    SUCESSO! Condição de término atingida.       ||");
                 $display("=====================================================");
                 $finish;
             end

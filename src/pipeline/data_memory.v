@@ -1,42 +1,29 @@
 // ========================================================
 // Módulo: data_memory
-// Descrição: Memória de dados síncrona para o processador RISC-V.
-//            Suporta operações de leitura e escrita de 32 bits.
+// Descrição: Memória de dados para o processador RISC-V.
 // ========================================================
 module data_memory (
-    input  wire        clk,          // Clock principal
-    input  wire        MemRead,      // Sinal de leitura da memória
-    input  wire        MemWrite,     // Sinal de escrita na memória
-    input  wire [31:0] addr,         // Endereço de acesso (byte-addressable)
-    input  wire [31:0] write_data,   // Dados a serem escritos
-    output reg  [31:0] read_data     // Dados lidos da memória
+    input  wire        clk,
+    input  wire        MemRead,     // Não é mais usado para a lógica de leitura, mas pode ser útil para depuração.
+    input  wire        MemWrite,
+    input  wire [31:0] addr,
+    input  wire [31:0] write_data,
+    output wire [31:0] read_data    // <<--- MUDANÇA 1: DEVE SER 'wire'
 );
 
-    // ----------------------------------------------------
-    // Memória de 1024 bytes = 256 palavras de 32 bits
-    // A indexação usa addr[9:2] para obter o endereço da palavra
-    // ----------------------------------------------------
+    // Memória de 256 palavras de 32 bits
     reg [31:0] memory [0:255];
 
-    // ----------------------------------------------------
-    // Escrita síncrona na memória
-    // Ocorre na borda de subida do clock se MemWrite = 1
-    // ----------------------------------------------------
+    // Escrita síncrona na memória (na borda de subida do clock)
     always @(posedge clk) begin
         if (MemWrite) begin
             memory[addr[9:2]] <= write_data;
         end
     end
 
-    // ----------------------------------------------------
-    // Leitura síncrona da memória
-    // O dado lido estará disponível no próximo ciclo
-    // Isso é compatível com o pipeline que já lida com essa latência
-    // ----------------------------------------------------
-    always @(posedge clk) begin
-        if (MemRead) begin
-            read_data <= memory[addr[9:2]];
-        end
-    end
+    
+    // O dado do endereço 'addr' está sempre disponível na saída.
+    assign read_data = memory[addr[9:2]];
+
 
 endmodule
