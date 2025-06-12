@@ -14,6 +14,7 @@ module data_memory (
     // Memória de 256 palavras de 32 bits
     reg [31:0] memory [0:255];
 
+    //MEMORIA DE DADOS SÃO REGISTRADORES
     // Escrita síncrona na memória (na borda de subida do clock)
     always @(posedge clk) begin
         if (MemWrite) begin
