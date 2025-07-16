@@ -1,4 +1,4 @@
-// Módulo: top_tb.v
+// Módulo: top_tb.v (VERSÃO FINAL COM CORREÇÃO DE TIMING DE RESET)
 // Descrição: Testbench de integração para os estágios IF, ID, EX, e MEM.
 
 `timescale 1ns/1ps
@@ -30,18 +30,24 @@ module top_tb;
     initial begin
         $display("Iniciando teste de integração (IF/ID/EX/MEM)...");
         
-        // PRÉ-CARGA DOS REGISTRADORES (Isso é necessário para o nosso teste)
-        $display("Pré-carregando registradores: x5=200, x6=123");
-        dut.id_stage_inst.reg_file_inst.registers[5] = 32'd200;
-        dut.id_stage_inst.reg_file_inst.registers[6] = 32'd123;
+        // Carrega o programa na MEMÓRIA DE INSTRUÇÕES (imem)
+        dut.imem_inst.mem_array[0] = 32'h0062A223; // sw x6, 4(x5)
+        dut.imem_inst.mem_array[1] = 32'h0042A383; // lw x7, 4(x5)
 
-        // Reset
+        // --- ORDEM DE EVENTOS CORRIGIDA ---
+
+        // 1. Primeiro, reseta o processador para limpar tudo
         rst = 1;
         #(CLK_PERIOD * 2);
         rst = 0;
         $display("Reset liberado. Observando o pipeline...");
         
-        // Rodar por 7 ciclos para ver o resultado do LW
+        // 2. AGORA, DEPOIS que o reset terminou, pré-carregamos os registradores
+        $display("Pré-carregando registradores: x5=200, x6=123");
+        dut.id_stage_inst.reg_file_inst.registers[5] = 32'd200;
+        dut.id_stage_inst.reg_file_inst.registers[6] = 32'd123;
+        
+        // 3. Deixa a simulação rodar para vermos o resultado
         #(CLK_PERIOD * 7);
         
         $display("Teste de integração concluído.");

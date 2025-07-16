@@ -1,5 +1,5 @@
-// Módulo: processor_top.v (VERSÃO FINAL E TOTALMENTE CORRIGIDA)
-// Descrição: Módulo principal que integra os estágios do processador.
+// Módulo: processor_top.v (CORRIGIDO COM ARQUITETURA HARVARD)
+// Descrição: Módulo principal com memórias de instrução e dados separadas.
 
 module processor_top (
     input  logic clk,
@@ -40,16 +40,26 @@ module processor_top (
     logic [31:0] alu_result_mem, rs2_data_mem;
     logic [4:0]  rd_addr_mem;
     logic        reg_write_en_mem, MemtoReg_mem, MemRead_mem, MemWrite_mem;
-    logic [31:0] mem_read_data;
+    logic [31:0] data_from_dmem;
 
     // --- Instanciação dos Módulos ---
 
-    memory memory_inst (
+    // Memória de Instruções (imem)
+    memory imem_inst (
         .clk(clk),
-        .mem_write_en(MemWrite_mem),
-        .addr(alu_result_mem),
-        .write_data(rs2_data_mem),
-        .read_data(mem_read_data)
+        .mem_write_en(1'b0), // Nunca se escreve na memória de instruções
+        .addr(pc_for_mem),   // Endereço vem do PC
+        .write_data(32'b0),
+        .read_data(instruction_from_mem) // Saída é a instrução
+    );
+
+    // Memória de Dados (dmem)
+    memory dmem_inst (
+        .clk(clk),
+        .mem_write_en(MemWrite_mem),   // Controlado pelo estágio MEM
+        .addr(alu_result_mem),         // Endereço vem do resultado da ULA
+        .write_data(rs2_data_mem),     // Dado a ser escrito vem de rs2
+        .read_data(data_from_dmem)     // Dado lido para o LW
     );
 
     if_stage if_stage_inst (
@@ -113,15 +123,14 @@ module processor_top (
         .rd_addr_out(rd_addr_ex)
     );
 
-    // <<-- BLOCO DE CONEXÃO CORRIGIDO -->>
     ex_stage ex_stage_inst (
-        .rs1_data(rs1_data_ex),    // CORRIGIDO: Deve vir do registrador ID/EX (_ex)
-        .rs2_data(rs2_data_ex),    // CORRIGIDO: Deve vir do registrador ID/EX (_ex)
-        .immediate(immediate_ex),  // CORRIGIDO: Deve vir do registrador ID/EX (_ex)
-        .ALUSrc(ALUSrc_ex),        // CORRIGIDO: Deve vir do registrador ID/EX (_ex)
-        .alu_op(alu_op_ex),        // CORRIGIDO: Deve vir do registrador ID/EX (_ex)
+        .rs1_data(rs1_data_ex),
+        .rs2_data(rs2_data_ex),
+        .immediate(immediate_ex),
+        .ALUSrc(ALUSrc_ex),
+        .alu_op(alu_op_ex),
         .alu_result(alu_result_ex),
-        .zero_flag(zero_flag_ex)
+        .zero_flag()
     );
 
     ex_mem_reg ex_mem_reg_inst(
@@ -147,6 +156,6 @@ module processor_top (
     assign dbg_pc_if         = pc_for_mem;
     assign dbg_instr_id      = instruction_id;
     assign dbg_alu_result_ex = alu_result_ex;
-    assign dbg_mem_read_data = mem_read_data;
+    assign dbg_mem_read_data = data_from_dmem;
 
 endmodule
