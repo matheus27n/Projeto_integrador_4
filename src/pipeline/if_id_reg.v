@@ -1,31 +1,29 @@
-// Módulo: if_id_reg.v
-// Descrição: Registrador de pipeline entre os estágios IF e ID.
-
+// Módulo: if_id_reg.v (MODIFICADO)
+// Descrição: Adicionada lógica de stall.
 module if_id_reg (
-    input  logic        clk,
-    input  logic        rst,
-    input  logic        flush, // Sinal para limpar o registrador (inserir NOP)
-    // Futuramente: entrada para stall
+    input  logic       clk,
+    input  logic       rst,
+    input  logic       flush,
+    input  logic       stall_pipeline, // MUDANÇA: Sinal da unidade de detecção de hazard
     
-    // Entradas vindas do estágio IF
     input  logic [31:0] instruction_in,
     input  logic [31:0] pc_plus_4_in,
 
-    // Saídas para o estágio ID
     output logic [31:0] instruction_out,
     output logic [31:0] pc_plus_4_out
 );
     
-    // Instrução NOP (addi x0, x0, 0) para ser usada no flush
     localparam NOP_INSTRUCTION = 32'h00000013;
 
     always_ff @(posedge clk, posedge rst) begin
         if (rst || flush) begin
-            // Se resetar ou limpar, insere uma instrução NOP e zera o PC+4
             instruction_out <= NOP_INSTRUCTION;
             pc_plus_4_out   <= 32'b0;
-        end else begin
-            // Em operação normal, apenas passa os dados de entrada para a saída
+        end
+        // MUDANÇA: Se o pipeline não estiver parado, carrega a nova instrução.
+        // Se estiver parado (stall=1), o registrador mantém seu valor antigo,
+        // efetivamente "congelando" a instrução no estágio ID.
+        else if (!stall_pipeline) begin
             instruction_out <= instruction_in;
             pc_plus_4_out   <= pc_plus_4_in;
         end
